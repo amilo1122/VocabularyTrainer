@@ -119,13 +119,42 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
         case string s when s.StartsWith("setCategories"):
             settings.GenerateWords(callbackQuery.Message.Chat.Id, callbackQuery.Data);
             await StartLearning(botClient, callbackQuery);
+            break; 
+        case string s when s.StartsWith("getNext"):
+            await StartLearning(botClient, callbackQuery);
             break;
     }
 }
 
 async Task StartLearning(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
-    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Data);
+    var id = callbackQuery.Message.Chat.Id;
+    
+    if(!settings.isCollectionEmpty(id))
+    {
+        var nextWord = settings.GetNextWord(id);
+        await botClient.SendTextMessageAsync(
+            chatId: callbackQuery.Message.Chat.Id,
+            text: $"<b>{nextWord}</b>",
+            parseMode: ParseMode.Html,
+            disableNotification: true);
+        List<Menu> trainingMenu = JsonSerializer.Deserialize<List<Menu>>(settings.LoadTrainingMenu());
+        List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
+
+        foreach (var button in trainingMenu)
+        {
+            buttons.Add(InlineKeyboardButton.WithCallbackData(text: button.Name, callbackData: button.Callback));
+        }
+
+        InlineKeyboardMarkup trainingKeyboard = new InlineKeyboardMarkup(SetTwoColumnsMenu(buttons).ToArray());
+
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Allowed actions:", replyMarkup: trainingKeyboard);
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Все слова из выбранной категории проработаны");
+        await LoadMainMenu(botClient, callbackQuery.Message);
+    }    
 }
 
 async Task LoadProgress(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -156,8 +185,7 @@ async Task DisplayCategories(ITelegramBotClient botClient, CallbackQuery callbac
 
 async Task DisplayLearningMenu(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
-    var id = callbackQuery.Message.Chat.Id;
-    List<Menu> learningMenu = JsonSerializer.Deserialize<List<Menu>>(settings.LoadLearningMenu(id));
+    List<Menu> learningMenu = JsonSerializer.Deserialize<List<Menu>>(settings.LoadLearningMenu());
     List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
 
     foreach (var button in learningMenu)
@@ -184,8 +212,7 @@ async Task OnMessageProcessing(ITelegramBotClient botClient, Message message)
 // Выводим кнопки главного меню
 async Task LoadMainMenu(ITelegramBotClient botClient, Message message)
 {
-    var id = message.Chat.Id;
-    List<Menu> mainMenu = JsonSerializer.Deserialize<List<Menu>>(settings.LoadMainMenu(id));
+    List<Menu> mainMenu = JsonSerializer.Deserialize<List<Menu>>(settings.LoadMainMenu());
     List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
 
     foreach (var button in mainMenu)
