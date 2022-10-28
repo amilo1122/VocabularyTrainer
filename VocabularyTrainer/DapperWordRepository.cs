@@ -59,5 +59,22 @@ namespace VocabularyTrainer
                 }
             }
         }
+
+        // Возвращаем перевод слова
+        public Word TranslateWord(string word)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = @"SELECT * FROM words WHERE fromWord = '" + word.ToLower() + "' OR toWord = '" + word.ToLower() + "'";
+                    return connection.QueryFirstOrDefault<Word>(sql);
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
     }
 }

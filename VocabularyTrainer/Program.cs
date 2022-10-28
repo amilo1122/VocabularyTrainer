@@ -120,15 +120,39 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
             break;
         case string s when s.StartsWith("setCategories"):
             settings.GenerateWords(callbackQuery.Message.Chat.Id, callbackQuery.Data);
-            await StartLearning(botClient, callbackQuery);
+            await StartLearning(botClient, callbackQuery.Message);
             break; 
         case string s when s.StartsWith("getNext"):
-            await StartLearning(botClient, callbackQuery);
+            await StartLearning(botClient, callbackQuery.Message);
             break; 
         case string s when s.StartsWith("enterTranslation"):
             await AskTranslation(botClient, callbackQuery);
             break;
+        case string s when s.StartsWith("showTranslation"):
+            await ShowTranslation(botClient, callbackQuery);
+            break;
+        case string s when s.StartsWith("runTest"):
+            await DisplayTest(botClient, callbackQuery);
+            break;
     }
+}
+
+async Task DisplayTest(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    throw new NotImplementedException();
+}
+
+async Task ShowTranslation(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    var id = callbackQuery.Message.Chat.Id;
+    var currentWord = _currentWordDict[id];
+    var translation = settings.TranslateWord(currentWord);
+    await botClient.SendTextMessageAsync(
+            chatId: id,
+            text: $"<b>{currentWord}</b> translates like <b>{translation}</b>",
+            parseMode: ParseMode.Html,
+            disableNotification: true);
+    await StartLearning(botClient, callbackQuery.Message, false);
 }
 
 async Task AskTranslation(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -137,13 +161,13 @@ async Task AskTranslation(ITelegramBotClient botClient, CallbackQuery callbackQu
     State = 2;
 }
 
-async Task StartLearning(ITelegramBotClient botClient, Message message)
+async Task StartLearning(ITelegramBotClient botClient, Message message, bool nexValue = true)
 {
     var id = message.Chat.Id;
     
     if(!settings.isCollectionEmpty(id))
     {
-        var nextWord = settings.GetNextWord(id);
+        var nextWord = settings.GetNextWord(id, nexValue);
         if (_currentWordDict.ContainsKey(id))
         {
             _currentWordDict.Remove(id);
@@ -215,24 +239,29 @@ async Task DisplayLearningMenu(ITelegramBotClient botClient, CallbackQuery callb
 
 }
 
-// 
+// Преверка введеного перевода. Если перевод неверный - слово оставляем в сгенерированный коллекции
 async Task CheckTranslation(ITelegramBotClient botClient, Message message)
 {
     var id = message.Chat.Id;
     var currentWord = _currentWordDict[id];
     var translation = settings.TranslateWord(currentWord);
-    if (translation == currentWord)
+    if (translation != null)
     {
-        await botClient.SendTextMessageAsync(message.Chat.Id, text: "Все верно!");
-        await StartLearning(botClient, message);
+        if (translation == message.Text)
+        {
+            await botClient.SendTextMessageAsync(message.Chat.Id, text: "Correct!");
+            await StartLearning(botClient, message);
+        }
+        else
+        {
+            await botClient.SendTextMessageAsync(message.Chat.Id, text: $"You're wrong! It was - {translation}");
+            await StartLearning(botClient, message, false);
+        }
     }
     else
     {
-        await botClient.SendTextMessageAsync(message.Chat.Id, text: $"Ошибка! Правильный перевод - {translation}");
-    }
-    
-
-    await LoadMainMenu(botClient, message);
+        await botClient.SendTextMessageAsync(message.Chat.Id, text: "Warning! Word is unavailable in database");
+    }    
 }
 
 // Обрабатываем запросы типа Message

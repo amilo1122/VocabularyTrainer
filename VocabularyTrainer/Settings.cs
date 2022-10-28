@@ -96,15 +96,35 @@ namespace VocabularyTrainer
             }
         }
 
-        public string? GetNextWord(long id)
+        public string? GetNextWord(long id, bool nextValue = true)
         {
             var userList = learningDict[id];
             var index = rnd.Next(0, userList.Count);
             var word = userList[index];
-            userList.RemoveAt(index);
-            learningDict.Remove(id);
-            learningDict[id] = userList;
+            if (nextValue)
+            {
+                userList.RemoveAt(index);
+                learningDict.Remove(id);
+                learningDict[id] = userList;
+            }            
             return word;
+        }
+
+        public string? TranslateWord(string fromWord)
+        {
+            var word = repo.TranslateWord(fromWord);
+            if (word != null)
+            {
+                if (word.FromWord == fromWord)
+                {
+                    return word.ToWord;
+                }
+                else
+                {
+                    return word.FromWord;
+                }
+            }
+            return null;
         }
     }
 }
