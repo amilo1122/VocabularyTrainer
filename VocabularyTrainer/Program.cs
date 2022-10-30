@@ -22,7 +22,7 @@ using var cts = new CancellationTokenSource();
 // Объявляем переменную статуса
 var State = 0;
 // Объявляем словарь для обработки слова
-Dictionary<long, string> _currentWordDict = new Dictionary<long, string>();
+Dictionary<long, LearningView> _currentWordDict = new Dictionary<long, LearningView>();
 
 // Объявляем массив методов для обработки сообщений от пользователей
 List<Method> methods = new List<Method>()
@@ -134,25 +134,49 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
         case string s when s.StartsWith("runTest"):
             await DisplayTest(botClient, callbackQuery);
             break;
+        case string s when s.StartsWith("testWord-"):
+            var message = callbackQuery.Message;
+            message.Text = callbackQuery.Data.Replace("testWord-","");
+            await CheckTranslation(botClient, message);
+            break;
     }
 }
 
 async Task DisplayTest(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
-    throw new NotImplementedException();
+    var id = callbackQuery.Message.Chat.Id;
+    var currentWord = _currentWordDict[id];
+    var testList = settings.GetTestList(id, currentWord);
+
+    List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
+
+    if (testList != null)
+    {
+        foreach (var word in testList)
+        {
+            buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{word}", callbackData: "testWord-" + word));
+        }
+        InlineKeyboardMarkup testWordsKeyboard = new InlineKeyboardMarkup(SetOneColumnMenu(buttons).ToArray());
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, $"Choose the rigth translation of -={currentWord.Name}=-", replyMarkup: testWordsKeyboard);
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "The list is empty");
+    }
+
 }
 
 async Task ShowTranslation(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
     var id = callbackQuery.Message.Chat.Id;
     var currentWord = _currentWordDict[id];
-    var translation = settings.TranslateWord(currentWord);
+    var translation = settings.TranslateWord(currentWord.Name);
     await botClient.SendTextMessageAsync(
             chatId: id,
-            text: $"<b>{currentWord}</b> translates like <b>{translation}</b>",
+            text: $"<b>{currentWord.Name}</b> translates like <b>{translation}</b>",
             parseMode: ParseMode.Html,
             disableNotification: true);
-    await StartLearning(botClient, callbackQuery.Message, false);
+    await StartLearning(botClient, callbackQuery.Message);
 }
 
 async Task AskTranslation(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -161,13 +185,14 @@ async Task AskTranslation(ITelegramBotClient botClient, CallbackQuery callbackQu
     State = 2;
 }
 
-async Task StartLearning(ITelegramBotClient botClient, Message message, bool nexValue = true)
+async Task StartLearning(ITelegramBotClient botClient, Message message)
 {
     var id = message.Chat.Id;
     
     if(!settings.isCollectionEmpty(id))
     {
-        var nextWord = settings.GetNextWord(id, nexValue);
+        var nextWord = settings.GetNextWord(id);
+        Console.WriteLine($"Next word is {nextWord.Name}");
         if (_currentWordDict.ContainsKey(id))
         {
             _currentWordDict.Remove(id);
@@ -175,7 +200,7 @@ async Task StartLearning(ITelegramBotClient botClient, Message message, bool nex
         _currentWordDict[id] = nextWord;
         await botClient.SendTextMessageAsync(
             chatId: id,
-            text: $"<b>{nextWord}</b>",
+            text: $"<b>{nextWord.Name}</b>",
             parseMode: ParseMode.Html,
             disableNotification: true);
         List<Menu> trainingMenu = JsonSerializer.Deserialize<List<Menu>>(settings.LoadTrainingMenu());
@@ -244,18 +269,21 @@ async Task CheckTranslation(ITelegramBotClient botClient, Message message)
 {
     var id = message.Chat.Id;
     var currentWord = _currentWordDict[id];
-    var translation = settings.TranslateWord(currentWord);
+    var translation = settings.TranslateWord(currentWord.Name);
     if (translation != null)
     {
         if (translation == message.Text)
         {
             await botClient.SendTextMessageAsync(message.Chat.Id, text: "Correct!");
+            settings.DeleteLearningWord(id, currentWord.Name);
+            Console.WriteLine($"{currentWord.Name} was deleted from learning collection");
             await StartLearning(botClient, message);
         }
         else
         {
             await botClient.SendTextMessageAsync(message.Chat.Id, text: $"You're wrong! It was - {translation}");
-            await StartLearning(botClient, message, false);
+            Console.WriteLine($"{currentWord.Name} was NOT deleted from learning collection");
+            await StartLearning(botClient, message);
         }
     }
     else

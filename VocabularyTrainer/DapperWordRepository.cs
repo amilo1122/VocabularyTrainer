@@ -44,14 +44,57 @@ namespace VocabularyTrainer
         }
 
         //
-        public List<Word>? GetWords(int id)
+        public List<Word>? GetWords(int categoryId)
         {
             using (var connection = new NpgsqlConnection(connectionString))
             {
                 try
                 {
-                    var sql = @"SELECT * FROM words WHERE categoryid = " + id;
+                    var sql = @"SELECT * FROM words WHERE categoryid = " + categoryId;
                     return connection.Query<Word>(sql).ToList();
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
+
+        //
+        public List<String>? GetWords(int typeId, int langId, string columnName)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = "";
+                    if (columnName == "To")
+                    {
+                        sql = @"SELECT toWord FROM words WHERE wordtypeid = " + typeId + "AND toLangId = " + langId;
+                    }
+                    else
+                    {
+                        sql = @"SELECT fromWord FROM words WHERE wordtypeid = " + typeId + "AND fromLangId = " + langId;
+                    }
+                    
+                    return connection.Query<string>(sql).ToList();
+                }
+                catch
+                {
+                    return null;
+                }
+            }
+        }
+
+        //
+        public Word? GetWord(int id)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = @"SELECT * FROM words WHERE id = " + id;
+                    return connection.QueryFirstOrDefault<Word>(sql);
                 }
                 catch
                 {

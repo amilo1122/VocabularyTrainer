@@ -11,7 +11,7 @@ namespace VocabularyTrainer
         Random rnd = new Random();
 
         Dictionary<long, NewWordView> newWordDict = new Dictionary<long, NewWordView>();
-        Dictionary<long, List<string>> learningDict = new Dictionary<long, List<string>>();
+        Dictionary<long, List<LearningView>> learningDict = new Dictionary<long, List<LearningView>>();
         public string? LoadMainMenu()
         {
             MainMenu mainMenu = new MainMenu();
@@ -69,12 +69,22 @@ namespace VocabularyTrainer
             {
                 words = repo.GetWords();
             }
-            var engList = new List<string>();
-            var rusList = new List<string>();
-            foreach(var word in words)
+            var engList = new List<LearningView>();
+
+            var rusList = new List<LearningView>();
+
+            foreach (var word in words)
             {
-                engList.Add(word.FromWord);
-                rusList.Add(word.ToWord);
+                var engObj = new LearningView();
+                engObj.Id = word.Id;
+                engObj.Name = word.FromWord;
+                engObj.LangId = word.FromLangId;
+                engList.Add(engObj);
+                var rusObj = new LearningView();
+                rusObj.Id = word.Id;
+                rusObj.Name = word.ToWord;
+                rusObj.LangId = word.ToLangId;
+                rusList.Add(rusObj);
             }
             if (learningDict.ContainsKey(userId))
             {
@@ -96,18 +106,27 @@ namespace VocabularyTrainer
             }
         }
 
-        public string? GetNextWord(long id, bool nextValue = true)
+        public LearningView GetNextWord(long id)
         {
             var userList = learningDict[id];
             var index = rnd.Next(0, userList.Count);
-            var word = userList[index];
-            if (nextValue)
+            return userList[index];
+        }
+
+        public void DeleteLearningWord(long id, string word)
+        {
+            var userList = learningDict[id];
+            int index = 0;
+            for (int i = 0; i < userList.Count; i++)
             {
-                userList.RemoveAt(index);
-                learningDict.Remove(id);
-                learningDict[id] = userList;
-            }            
-            return word;
+                if (userList[i].Name == word)
+                {
+                    index = i;
+                }
+            }
+            userList.RemoveAt(index);
+            learningDict.Remove(id);
+            learningDict[id] = userList;
         }
 
         public string? TranslateWord(string fromWord)
@@ -125,6 +144,66 @@ namespace VocabularyTrainer
                 }
             }
             return null;
+        }
+
+        public List<string> GetTestList(long id, LearningView currentWord)
+        {
+            var translation = TranslateWord(currentWord.Name);
+            var targetWord = repo.GetWord(currentWord.Id);
+            var typeId = targetWord.WordTypeId;
+            int targetLangId = -1;
+            var columnName = "";
+            if (targetWord.ToLangId != currentWord.LangId)
+            {
+                targetLangId = targetWord.ToLangId;
+                columnName = "To";
+            }
+            else
+            {
+                targetLangId = targetWord.FromLangId;
+                columnName = "From";
+            }
+            Console.WriteLine($"Current word = {currentWord.Name}");
+            Console.WriteLine($"Current lang = {currentWord.LangId}");
+            Console.WriteLine($"Traslation = {translation}");
+            Console.WriteLine($"WordTypeId = {typeId}");
+            Console.WriteLine($"TargetLangId = {targetLangId}");
+            var targetList = repo.GetWords(typeId, targetLangId, columnName);
+            if (targetList != null && translation != null)
+            {
+                targetList.Remove(translation);
+
+                var outputList = new List<string>();
+                int index = 3;
+                if (targetList.Count < 3)
+                {
+                    index = targetList.Count;
+                }
+                int[] indexArray = new int[index];
+                for (int i = 0; i < indexArray.Length; i++)
+                {
+                    indexArray[i] = -1;
+                }
+                int j = 0;
+                while (indexArray.Contains(-1))
+                {
+                    var targetIndex = rnd.Next(0, targetList.Count);
+                    if (!indexArray.Contains(targetIndex))
+                    {
+                        indexArray[j] = targetIndex;
+                        outputList.Add(targetList[targetIndex]);
+                        j++;
+                    }
+                }
+                outputList.Add(translation);
+                outputList.Sort();
+                return outputList;
+            }
+            else
+            {
+                return null;
+            }
+            
         }
     }
 }
