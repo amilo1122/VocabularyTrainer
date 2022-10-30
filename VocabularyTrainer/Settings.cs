@@ -69,6 +69,11 @@ namespace VocabularyTrainer
             {
                 words = repo.GetWords();
             }
+            PreparingLearningList(userId, words);
+        }
+
+        private void PreparingLearningList(long userId, List<Word> words)
+        {
             var engList = new List<LearningView>();
 
             var rusList = new List<LearningView>();
@@ -163,11 +168,6 @@ namespace VocabularyTrainer
                 targetLangId = targetWord.FromLangId;
                 columnName = "From";
             }
-            Console.WriteLine($"Current word = {currentWord.Name}");
-            Console.WriteLine($"Current lang = {currentWord.LangId}");
-            Console.WriteLine($"Traslation = {translation}");
-            Console.WriteLine($"WordTypeId = {typeId}");
-            Console.WriteLine($"TargetLangId = {targetLangId}");
             var targetList = repo.GetWords(typeId, targetLangId, columnName);
             if (targetList != null && translation != null)
             {
@@ -202,8 +202,27 @@ namespace VocabularyTrainer
             else
             {
                 return null;
+            }            
+        }
+
+        // 
+        public void SaveProgress(long id)
+        {
+            repo.ClearCurrectProgress(id);
+            var newProgess = learningDict[id];
+            repo.SaveNewProgress(id, newProgess);
+        }
+
+        public void LoadProgress(long id)
+        {
+            var userProgress = repo.GetUserProgress(id);
+            List<Word> result = new List<Word>();
+            foreach (var wordId in userProgress)
+            {
+                var word = repo.GetWord(wordId);
+                result.Add(word);
             }
-            
+            PreparingLearningList(id, result);
         }
     }
 }

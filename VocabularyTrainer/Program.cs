@@ -50,7 +50,7 @@ botClient.StartReceiving(
 
 var me = await botClient.GetMeAsync();
 
-Console.WriteLine($"Начал прослушку @{me.Username}");
+Console.WriteLine($"Started wiretapping @{me.Username}");
 Console.ReadLine();
 
 // Указываем токен отмены
@@ -139,7 +139,21 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
             message.Text = callbackQuery.Data.Replace("testWord-","");
             await CheckTranslation(botClient, message);
             break;
+        case string s when s.StartsWith("saveProgress"):
+            await SaveProgress(botClient, callbackQuery);
+            break;
+        case string s when s.StartsWith("uploadProgress"):
+            await LoadProgress(botClient, callbackQuery);
+            break;
     }
+}
+
+async Task SaveProgress(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    var id = callbackQuery.Message.Chat.Id;
+    settings.SaveProgress(id);
+    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Currect progress has been saved to database");
+    await LoadMainMenu(botClient, callbackQuery.Message);
 }
 
 async Task DisplayTest(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -157,7 +171,7 @@ async Task DisplayTest(ITelegramBotClient botClient, CallbackQuery callbackQuery
             buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{word}", callbackData: "testWord-" + word));
         }
         InlineKeyboardMarkup testWordsKeyboard = new InlineKeyboardMarkup(SetOneColumnMenu(buttons).ToArray());
-        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, $"Choose the rigth translation of -={currentWord.Name}=-", replyMarkup: testWordsKeyboard);
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, $"Choose the correct translation of the word: {currentWord.Name}", replyMarkup: testWordsKeyboard);
     }
     else
     {
@@ -181,7 +195,7 @@ async Task ShowTranslation(ITelegramBotClient botClient, CallbackQuery callbackQ
 
 async Task AskTranslation(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
-    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Введите перевод слова:");
+    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Enter the translation of the word:");
     State = 2;
 }
 
@@ -217,14 +231,17 @@ async Task StartLearning(ITelegramBotClient botClient, Message message)
     }
     else
     {
-        await botClient.SendTextMessageAsync(id, "Все слова из выбранной категории проработаны");
+        await botClient.SendTextMessageAsync(id, "Well done, all words has been learnt");
         await LoadMainMenu(botClient, message);
     }    
 }
 
 async Task LoadProgress(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
-    throw new NotImplementedException();
+    var id = callbackQuery.Message.Chat.Id;
+    settings.LoadProgress(id);
+    await botClient.SendTextMessageAsync(id, "The progress has been loaded");
+    await StartLearning(botClient, callbackQuery.Message);
 }
 
 async Task DisplayCategories(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -238,13 +255,13 @@ async Task DisplayCategories(ITelegramBotClient botClient, CallbackQuery callbac
         {
             buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{category.Name}", callbackData: "setCategories" + category.Id));
         }
-        buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"Все категории", callbackData: "setCategories0"));
+        buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"All categories", callbackData: "setCategories0"));
         InlineKeyboardMarkup goodsKeyboard = new InlineKeyboardMarkup(SetOneColumnMenu(buttons).ToArray());
-        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Выберите категорию для обучения:", replyMarkup: goodsKeyboard);
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Choose a category for training:", replyMarkup: goodsKeyboard);
     }
     else
     {
-        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Список категорий пуст!");
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "The list of categories is empty!");
     }
 }
 
@@ -260,7 +277,7 @@ async Task DisplayLearningMenu(ITelegramBotClient botClient, CallbackQuery callb
 
     InlineKeyboardMarkup mainLearningKeyboard = new InlineKeyboardMarkup(SetTwoColumnsMenu(buttons).ToArray());
 
-    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Главное меню", replyMarkup: mainLearningKeyboard);
+    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Main menu", replyMarkup: mainLearningKeyboard);
 
 }
 
@@ -315,7 +332,7 @@ async Task LoadMainMenu(ITelegramBotClient botClient, Message message)
 
     InlineKeyboardMarkup mainMenuKeyboard = new InlineKeyboardMarkup(SetTwoColumnsMenu(buttons).ToArray());
 
-    await botClient.SendTextMessageAsync(message.Chat.Id, "Главное меню", replyMarkup: mainMenuKeyboard);
+    await botClient.SendTextMessageAsync(message.Chat.Id, "Main menu", replyMarkup: mainMenuKeyboard);
 }
 
 // Выводим кнопки в две колонки
@@ -349,7 +366,7 @@ List<InlineKeyboardButton[]> SetOneColumnMenu(List<InlineKeyboardButton> buttons
 // Выводим сообщение о непонятной команде, когда пользователь пишет сообщение и State=0, далее выводим главное меню
 async Task MisundestatingAnswer(ITelegramBotClient botClient, Message message)
 {
-    await botClient.SendTextMessageAsync(message.Chat.Id, text: "Я не понимаю такой команды...");
+    await botClient.SendTextMessageAsync(message.Chat.Id, text: "I don't understand this command...");
 
     await LoadMainMenu(botClient, message);
 }
@@ -360,7 +377,7 @@ Task HandleErrorAsync(ITelegramBotClient client, Exception exception, Cancellati
     var ErrorMessage = exception switch
     {
         ApiRequestException apiRequestException
-            => $"Ошибка телеграм API:\n{apiRequestException.ErrorCode}\n{apiRequestException.Message}",
+            => $"Telegram API error:\n{apiRequestException.ErrorCode}\n{apiRequestException.Message}",
         _ => exception.ToString()
     };
     Console.WriteLine(ErrorMessage);

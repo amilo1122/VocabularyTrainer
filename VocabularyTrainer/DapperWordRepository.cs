@@ -119,5 +119,38 @@ namespace VocabularyTrainer
                 }
             }
         }
+
+        // Очищаем текущий прогресс пользователя
+        public void ClearCurrectProgress(long id)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"DELETE FROM personals WHERE userid = " + id;
+                connection.QueryFirstOrDefault<Personal>(sql);
+            }
+        }
+
+        // Записываем новый прогресс пользователя
+        public void SaveNewProgress(long id, List<LearningView> progressList)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                foreach (var item in progressList)
+                {
+                    var sql = @"INSERT INTO personals(userid, wordid, languageid) VALUES(" + id + "," + item.Id + "," + item.LangId + ");";
+                    connection.QueryFirstOrDefault<Personal>(sql);
+                }
+            }
+        }
+
+        // Возвращаем прогресс пользователя
+        public List<int> GetUserProgress(long id)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"SELECT wordid FROM personals WHERE userid = " + id;
+                return connection.Query<int>(sql).ToList();
+            }
+        }
     }
 }
