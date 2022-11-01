@@ -38,7 +38,7 @@ namespace VocabularyTrainer
             if (Regex.IsMatch(name, "[a-zA-Z]"))
             {
                 var newWord = new NewWordView();
-                newWord.EngWord = name;
+                //newWord.EngWord = name;
                 if (newWordDict.ContainsKey(userId))
                 {
                     newWordDict.Remove(userId);
@@ -223,6 +223,11 @@ namespace VocabularyTrainer
                 result.Add(word);
             }
             PreparingLearningList(id, result);
+        }
+
+        public List<Language> GetLanguages()
+        {
+            return repo.GetLanguages();
         }
     }
 }

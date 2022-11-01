@@ -8,7 +8,8 @@ namespace VocabularyTrainer.Models
 {
     public class NewWordView
     {
-        public string EngWord { get; set; }
+        public int FromLangId { get; set; }
+        public string FromLang { get; set; }
         public string RusWord { get; set; }
         public WordTypes WordType { get; set; }
     }

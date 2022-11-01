@@ -152,5 +152,15 @@ namespace VocabularyTrainer
                 return connection.Query<int>(sql).ToList();
             }
         }
+
+        // Возвращаем доступные языки
+        public List<Language> GetLanguages()
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"SELECT * FROM languages";
+                return connection.Query<Language>(sql).ToList();
+            }
+        }
     }
 }

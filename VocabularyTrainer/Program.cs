@@ -23,12 +23,15 @@ using var cts = new CancellationTokenSource();
 var State = 0;
 // Объявляем словарь для обработки слова
 Dictionary<long, LearningView> _currentWordDict = new Dictionary<long, LearningView>();
+// Объявляем словарь для хранения нового слова
+Dictionary<long, Word> _newWordDict = new Dictionary<long, Word>();
 
 // Объявляем массив методов для обработки сообщений от пользователей
 List<Method> methods = new List<Method>()
 {
     new Method(1, MisundestatingAnswer),
     new Method(2, CheckTranslation),
+    new Method(3, SetFromWord),
 };
 
 // Объявляем настройки получения обновлений
@@ -145,6 +148,49 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
         case string s when s.StartsWith("uploadProgress"):
             await LoadProgress(botClient, callbackQuery);
             break;
+        case string s when s.StartsWith("addWord"):
+            await DisplayLanguage(botClient, callbackQuery.Message);
+            break;
+        case string s when s.StartsWith("Langs-"):
+            await AskFromWord(botClient, callbackQuery);
+            break;
+    }
+}
+
+async Task AskFromWord(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    var id = callbackQuery.Message.Chat.Id;
+    var chosenLanguage = callbackQuery.Data.Replace("Langs-", "");
+    if (_newWordDict.ContainsKey(id))
+    {
+        _newWordDict.Remove(id);
+    }
+    Word word = new Word();
+    word.ToLangId = Int32.Parse(chosenLanguage);
+    _newWordDict[id] = word;
+
+    await botClient.SendTextMessageAsync(id, "Enter from word:");
+    State = 3;
+}
+
+async Task DisplayLanguage(ITelegramBotClient botClient, Message message)
+{
+    var langs = settings.GetLanguages();
+
+    List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
+
+    if (langs != null)
+    {
+        foreach (var lang in langs)
+        {
+            buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{lang.Name}", callbackData: "Langs-" + lang.Id));
+        }
+        InlineKeyboardMarkup newWordKeyboard = new InlineKeyboardMarkup(SetOneColumnMenu(buttons).ToArray());
+        await botClient.SendTextMessageAsync(message.Chat.Id, $"From language:", replyMarkup: newWordKeyboard);
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(message.Chat.Id, "The list is empty");
     }
 }
 
@@ -309,8 +355,22 @@ async Task CheckTranslation(ITelegramBotClient botClient, Message message)
     }    
 }
 
-// Обрабатываем запросы типа Message
-async Task OnMessageProcessing(ITelegramBotClient botClient, Message message)
+// Записываем fromWord в словарь
+async Task SetFromWord(ITelegramBotClient botClient, Message message)
+{
+    var id = message.Chat.Id;
+    var fromWord = message.Text;
+    var word = _newWordDict[id];
+    //извлечь fromlandid, потом записать вместе с fromword
+    word.FromWord = fromWord;
+    _newWordDict[id] = word;
+    
+    await botClient.SendTextMessageAsync(message.Chat.Id, $"{_newWordDict[id].FromWord} - {_newWordDict[id].FromLangId}");
+    State = 4;
+}
+
+    // Обрабатываем запросы типа Message
+    async Task OnMessageProcessing(ITelegramBotClient botClient, Message message)
 {
     Method method = methods.FirstOrDefault(x => x.State == State);
     if (method != null)
