@@ -32,6 +32,7 @@ List<Method> methods = new List<Method>()
     new Method(1, MisundestatingAnswer),
     new Method(2, CheckTranslation),
     new Method(3, SetFromWord),
+    new Method(4, SetToWord),
 };
 
 // Объявляем настройки получения обновлений
@@ -151,22 +152,36 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
         case string s when s.StartsWith("addWord"):
             await DisplayLanguage(botClient, callbackQuery.Message);
             break;
-        case string s when s.StartsWith("Langs-"):
+        case string s when s.StartsWith("FromLang-"):
             await AskFromWord(botClient, callbackQuery);
             break;
+        case string s when s.StartsWith("ToLang-"):
+            await AskToWord(botClient, callbackQuery);
+            break;
     }
+}
+
+async Task AskToWord(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    var id = callbackQuery.Message.Chat.Id;
+    var chosenLanguage = callbackQuery.Data.Replace("ToLang-", "");
+    var word = _newWordDict[id];
+    word.ToLangId = Int32.Parse(chosenLanguage);
+    _newWordDict[id] = word;
+    await botClient.SendTextMessageAsync(id, "Enter to word:");
+    State = 4;
 }
 
 async Task AskFromWord(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
     var id = callbackQuery.Message.Chat.Id;
-    var chosenLanguage = callbackQuery.Data.Replace("Langs-", "");
+    var chosenLanguage = callbackQuery.Data.Replace("FromLang-", "");
     if (_newWordDict.ContainsKey(id))
     {
         _newWordDict.Remove(id);
     }
     Word word = new Word();
-    word.ToLangId = Int32.Parse(chosenLanguage);
+    word.FromLangId = Int32.Parse(chosenLanguage);
     _newWordDict[id] = word;
 
     await botClient.SendTextMessageAsync(id, "Enter from word:");
@@ -175,22 +190,39 @@ async Task AskFromWord(ITelegramBotClient botClient, CallbackQuery callbackQuery
 
 async Task DisplayLanguage(ITelegramBotClient botClient, Message message)
 {
+    var id = message.Chat.Id;
+    
     var langs = settings.GetLanguages();
 
     List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
+
+    string outputString = "";
 
     if (langs != null)
     {
         foreach (var lang in langs)
         {
-            buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{lang.Name}", callbackData: "Langs-" + lang.Id));
+            if (!_newWordDict.ContainsKey(id))
+            {
+                buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{lang.Name}", callbackData: "FromLang-" + lang.Id));
+                outputString = "From language:";
+            }
+            else
+            {
+                if (_newWordDict[id].FromLangId != lang.Id)
+                {
+                    buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{lang.Name}", callbackData: "ToLang-" + lang.Id));
+                }
+                outputString = "To language:";
+            }
+            
         }
         InlineKeyboardMarkup newWordKeyboard = new InlineKeyboardMarkup(SetOneColumnMenu(buttons).ToArray());
-        await botClient.SendTextMessageAsync(message.Chat.Id, $"From language:", replyMarkup: newWordKeyboard);
+        await botClient.SendTextMessageAsync(id, outputString, replyMarkup: newWordKeyboard);
     }
     else
     {
-        await botClient.SendTextMessageAsync(message.Chat.Id, "The list is empty");
+        await botClient.SendTextMessageAsync(id, "The list is empty");
     }
 }
 
@@ -355,22 +387,32 @@ async Task CheckTranslation(ITelegramBotClient botClient, Message message)
     }    
 }
 
-// Записываем fromWord в словарь
+// Записываем fromWord в словарь и выводим список языков
 async Task SetFromWord(ITelegramBotClient botClient, Message message)
 {
     var id = message.Chat.Id;
     var fromWord = message.Text;
     var word = _newWordDict[id];
-    //извлечь fromlandid, потом записать вместе с fromword
     word.FromWord = fromWord;
     _newWordDict[id] = word;
     
-    await botClient.SendTextMessageAsync(message.Chat.Id, $"{_newWordDict[id].FromWord} - {_newWordDict[id].FromLangId}");
-    State = 4;
+    await DisplayLanguage(botClient, message);
 }
 
-    // Обрабатываем запросы типа Message
-    async Task OnMessageProcessing(ITelegramBotClient botClient, Message message)
+// Записываем toWord в словарь и выводим список типов
+async Task SetToWord(ITelegramBotClient botClient, Message message)
+{
+    var id = message.Chat.Id;
+    var toWord = message.Text;
+    var word = _newWordDict[id];
+    word.ToWord = toWord;
+    _newWordDict[id] = word;
+
+    await DisplayWordTypes(botClient, message);
+}
+
+// Обрабатываем запросы типа Message
+async Task OnMessageProcessing(ITelegramBotClient botClient, Message message)
 {
     Method method = methods.FirstOrDefault(x => x.State == State);
     if (method != null)
