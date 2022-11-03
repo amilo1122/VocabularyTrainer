@@ -158,7 +158,44 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
         case string s when s.StartsWith("ToLang-"):
             await AskToWord(botClient, callbackQuery);
             break;
+        case string s when s.StartsWith("wordTypes"):
+            await SetWordType(botClient, callbackQuery);
+            await DisplayCategories(botClient, callbackQuery, true);
+            break; 
+        case string s when s.StartsWith("writeWordToDB"):
+            await SaveWordToDB(botClient, callbackQuery);
+            break;
     }
+}
+
+async Task SaveWordToDB(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    var id = callbackQuery.Message.Chat.Id;
+    var category = Int32.Parse(callbackQuery.Data.Replace("writeWordToDB",""));
+    var word = _newWordDict[id];
+    word.CategoryId = category;
+    _newWordDict[id] = word;
+
+    var flag = settings.SaveWordToDB(_newWordDict[id]);
+    if (flag)
+    {
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "The word has been successfully added to datebase");
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "The word has alredy been in datebase");
+    }
+    _newWordDict.Remove(id);
+    await LoadMainMenu(botClient, callbackQuery.Message);
+}
+
+async Task SetWordType(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    var id = callbackQuery.Message.Chat.Id;
+    var chosenWordType = callbackQuery.Data.Replace("wordTypes", "");
+    var word = _newWordDict[id];
+    word.WordTypeId = Int32.Parse(chosenWordType);
+    _newWordDict[id] = word;
 }
 
 async Task AskToWord(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -322,7 +359,7 @@ async Task LoadProgress(ITelegramBotClient botClient, CallbackQuery callbackQuer
     await StartLearning(botClient, callbackQuery.Message);
 }
 
-async Task DisplayCategories(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+async Task DisplayCategories(ITelegramBotClient botClient, CallbackQuery callbackQuery, bool isNewWord = false)
 {
     List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
     var categories = settings.GetCategories();
@@ -331,11 +368,22 @@ async Task DisplayCategories(ITelegramBotClient botClient, CallbackQuery callbac
     {
         foreach (var category in categories)
         {
-            buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{category.Name}", callbackData: "setCategories" + category.Id));
+            if (!isNewWord)
+            {
+                buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{category.Name}", callbackData: "setCategories" + category.Id));
+            }
+            else
+            {
+                buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"{category.Name}", callbackData: "writeWordToDB" + category.Id));
+            }
+            
         }
-        buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"All categories", callbackData: "setCategories0"));
+        if (!isNewWord)
+        {
+            buttons.Add(InlineKeyboardButton.WithCallbackData(text: $"All categories", callbackData: "setCategories0"));
+        }        
         InlineKeyboardMarkup goodsKeyboard = new InlineKeyboardMarkup(SetOneColumnMenu(buttons).ToArray());
-        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Choose a category for training:", replyMarkup: goodsKeyboard);
+        await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Choose a category:", replyMarkup: goodsKeyboard);
     }
     else
     {
@@ -411,6 +459,22 @@ async Task SetToWord(ITelegramBotClient botClient, Message message)
     await DisplayWordTypes(botClient, message);
 }
 
+// Выводим типы слов
+async Task DisplayWordTypes(ITelegramBotClient botClient, Message message)
+{
+    var types = settings.GetWordTypes();
+    List<InlineKeyboardButton> buttons = new List<InlineKeyboardButton>();
+    
+    foreach (var button in types)
+    {
+        buttons.Add(InlineKeyboardButton.WithCallbackData(text: button.Name, callbackData: "wordTypes" + button.Id));
+    }
+
+    InlineKeyboardMarkup typesKeyboard = new InlineKeyboardMarkup(SetTwoColumnsMenu(buttons).ToArray());
+
+    await botClient.SendTextMessageAsync(message.Chat.Id, "Choose word type", replyMarkup: typesKeyboard);
+}
+
 // Обрабатываем запросы типа Message
 async Task OnMessageProcessing(ITelegramBotClient botClient, Message message)
 {
@@ -418,7 +482,7 @@ async Task OnMessageProcessing(ITelegramBotClient botClient, Message message)
     if (method != null)
     {
         method.DelegateMethod(botClient, message);
-    }
+    }    
 }
 
 // Выводим кнопки главного меню

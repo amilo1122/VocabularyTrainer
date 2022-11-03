@@ -10,7 +10,6 @@ namespace VocabularyTrainer
         DapperWordRepository repo = new DapperWordRepository();
         Random rnd = new Random();
 
-        Dictionary<long, NewWordView> newWordDict = new Dictionary<long, NewWordView>();
         Dictionary<long, List<LearningView>> learningDict = new Dictionary<long, List<LearningView>>();
         public string? LoadMainMenu()
         {
@@ -31,25 +30,6 @@ namespace VocabularyTrainer
             TrainingMenu trainingMenu = new TrainingMenu();
             var userMenu = trainingMenu.GetTrainingMenu();
             return userMenu;
-        }
-
-        public bool AddEnglishWord(string name, long userId)
-        {
-            if (Regex.IsMatch(name, "[a-zA-Z]"))
-            {
-                var newWord = new NewWordView();
-                //newWord.EngWord = name;
-                if (newWordDict.ContainsKey(userId))
-                {
-                    newWordDict.Remove(userId);
-                }
-                newWordDict.Add(userId, newWord);
-                return true;
-            }
-            else
-            {
-                return false;
-            }
         }
 
         public List<Category>? GetCategories()
@@ -228,6 +208,22 @@ namespace VocabularyTrainer
         public List<Language> GetLanguages()
         {
             return repo.GetLanguages();
+        }
+
+        public List<WordType> GetWordTypes()
+        {
+            return repo.GetWordTypes();
+        }
+
+        public bool SaveWordToDB(Word word)
+        {
+            bool isExists = repo.isWordExists(word.FromWord);
+            if (!isExists)
+            {
+                repo.SaveWordToDB(word);
+                return true;
+            }
+            return false;
         }
     }
 }

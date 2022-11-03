@@ -9,7 +9,7 @@ namespace VocabularyTrainer
         // Создаем строку подключения к БД
         string connectionString = Config.SQLConnectionString;
 
-        // Добавляем товар в корзину, если отсутствует. Возвращаем false, если товар присутствует или количество <= 0
+        // Возвращаем все катогории
         public List<Category>? GetCategories()
         {
             using (var connection = new NpgsqlConnection(connectionString))
@@ -26,7 +26,7 @@ namespace VocabularyTrainer
             }
         }
 
-        // 
+        // Возвращаем все слова
         public List<Word>? GetWords()
         {
             using (var connection = new NpgsqlConnection(connectionString))
@@ -43,7 +43,7 @@ namespace VocabularyTrainer
             }
         }
 
-        //
+        // Возвращем список слов по id категории
         public List<Word>? GetWords(int categoryId)
         {
             using (var connection = new NpgsqlConnection(connectionString))
@@ -60,7 +60,7 @@ namespace VocabularyTrainer
             }
         }
 
-        //
+        // Возвращаем список, сожержащий typeid, langid и имя колонки
         public List<String>? GetWords(int typeId, int langId, string columnName)
         {
             using (var connection = new NpgsqlConnection(connectionString))
@@ -86,7 +86,7 @@ namespace VocabularyTrainer
             }
         }
 
-        //
+        // Возвращаем слово по id
         public Word? GetWord(int id)
         {
             using (var connection = new NpgsqlConnection(connectionString))
@@ -99,6 +99,24 @@ namespace VocabularyTrainer
                 catch
                 {
                     return null;
+                }
+            }
+        }
+
+        // Возвращаем слово по id
+        public bool isWordExists(string fromWord)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = @"SELECT * FROM words WHERE fromWord = " + fromWord;
+                    connection.QueryFirstOrDefault<Word>(sql);
+                    return true;
+                }
+                catch
+                {
+                    return false;
                 }
             }
         }
@@ -160,6 +178,28 @@ namespace VocabularyTrainer
             {
                 var sql = @"SELECT * FROM languages";
                 return connection.Query<Language>(sql).ToList();
+            }
+        }
+
+        // Возвращаем типы слов
+        public List<WordType> GetWordTypes()
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"SELECT * FROM wordtypes";
+                return connection.Query<WordType>(sql).ToList();
+            }
+        }
+
+        //
+        public void SaveWordToDB(Word word)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"INSERT INTO words(fromword, fromlangid, toword, tolangid, wordtypeid, categoryid) 
+                            VALUES('" + word.FromWord + "'," + word.FromLangId + ",'" + word.ToWord + "', " 
+                            + word.ToLangId + "," + word.WordTypeId + "," + word.CategoryId + ");";
+                connection.Query<Word>(sql).ToList();
             }
         }
     }
