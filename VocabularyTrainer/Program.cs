@@ -9,6 +9,11 @@ using Telegram.Bot.Types.ReplyMarkups;
 using VocabularyTrainer;
 using VocabularyTrainer.Models;
 
+using System.Net;
+
+ServicePointManager.Expect100Continue = true;
+ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
 // Объявляем переменную для хранения ключа
 const string key = @"c:/apikey/apikey1.txt";
 // Читаем ключ из файла
@@ -33,6 +38,9 @@ List<Method> methods = new List<Method>()
     new Method(2, CheckTranslation),
     new Method(3, SetFromWord),
     new Method(4, SetToWord),
+    new Method(5, AddCategory),
+    new Method(6, AddWordType),
+    new Method(7, AddLanguage),
 };
 
 // Объявляем настройки получения обновлений
@@ -97,6 +105,7 @@ async Task BotOnMessageReceived(ITelegramBotClient botClient, Message? message)
     switch (message.Text)
     {
         case ("/start"):
+            await CheckUser(botClient, message);
             await LoadMainMenu(botClient, message);
             break;
         default:
@@ -104,6 +113,7 @@ async Task BotOnMessageReceived(ITelegramBotClient botClient, Message? message)
             break;
     }
 }
+
 async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery callbackQuery)
 {
     Console.WriteLine($"Receive message type {callbackQuery.Message.Type}");
@@ -164,8 +174,42 @@ async Task InlineModeProcessing(ITelegramBotClient botClient, CallbackQuery call
             break; 
         case string s when s.StartsWith("writeWordToDB"):
             await SaveWordToDB(botClient, callbackQuery);
+            break; 
+        case string s when s.StartsWith("newCategory"):
+            await AskNewCategoryName(botClient, callbackQuery);
+            break;
+        case string s when s.StartsWith("newWordType"):
+            await AskNewWordTypeName(botClient, callbackQuery);
+            break;
+        case string s when s.StartsWith("newLanguage"):
+            await AskNewLanguageName(botClient, callbackQuery);
             break;
     }
+}
+
+async Task CheckUser(ITelegramBotClient botClient, Message message)
+{
+    var id = message.Chat.Id;
+    settings.CheckUser(id);
+    await botClient.SendTextMessageAsync(id, $"Hello, {message.Chat.Username}!, welcome to FFR Language Trainer:");
+}
+
+async Task AskNewLanguageName(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Enter new language name:");
+    State = 7;
+}
+
+async Task AskNewWordTypeName(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Enter new word type name:");
+    State = 6;
+}
+
+async Task AskNewCategoryName(ITelegramBotClient botClient, CallbackQuery callbackQuery)
+{
+    await botClient.SendTextMessageAsync(callbackQuery.Message.Chat.Id, "Enter new category name:");
+    State = 5;
 }
 
 async Task SaveWordToDB(ITelegramBotClient botClient, CallbackQuery callbackQuery)
@@ -415,7 +459,7 @@ async Task CheckTranslation(ITelegramBotClient botClient, Message message)
     var translation = settings.TranslateWord(currentWord.Name);
     if (translation != null)
     {
-        if (translation == message.Text)
+        if (translation == message.Text.ToLower())
         {
             await botClient.SendTextMessageAsync(message.Chat.Id, text: "Correct!");
             settings.DeleteLearningWord(id, currentWord.Name);
@@ -457,6 +501,60 @@ async Task SetToWord(ITelegramBotClient botClient, Message message)
     _newWordDict[id] = word;
 
     await DisplayWordTypes(botClient, message);
+}
+
+// Записываем новую категорию в БД
+async Task AddCategory(ITelegramBotClient botClient, Message message)
+{
+    var id = message.Chat.Id;
+    var name = message.Text;
+    bool flag = settings.AddCategory(name);
+    if (flag)
+    {
+        await botClient.SendTextMessageAsync(message.Chat.Id, "Category has been successully added");
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(message.Chat.Id, "Category already exists in datebase");
+    }
+
+    await LoadMainMenu(botClient, message);
+}
+
+// Записываем новый тип слова в БД
+async Task AddWordType(ITelegramBotClient botClient, Message message)
+{
+    var id = message.Chat.Id;
+    var name = message.Text;
+    bool flag = settings.AddWordType(name);
+    if (flag)
+    {
+        await botClient.SendTextMessageAsync(message.Chat.Id, "Word type has been successully added");
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(message.Chat.Id, "Word type already exists in datebase");
+    }
+
+    await LoadMainMenu(botClient, message);
+}
+
+// Записываем новый тип слова в БД
+async Task AddLanguage(ITelegramBotClient botClient, Message message)
+{
+    var id = message.Chat.Id;
+    var name = message.Text;
+    bool flag = settings.AddLanguage(name);
+    if (flag)
+    {
+        await botClient.SendTextMessageAsync(message.Chat.Id, "Language has been successully added");
+    }
+    else
+    {
+        await botClient.SendTextMessageAsync(message.Chat.Id, "Language already exists in datebase");
+    }
+
+    await LoadMainMenu(botClient, message);
 }
 
 // Выводим типы слов

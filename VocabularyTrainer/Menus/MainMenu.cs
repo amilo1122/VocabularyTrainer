@@ -7,8 +7,10 @@ namespace VocabularyTrainer.Menus
     {
         List<Menu> mainMenu = new List<Menu> {
             new Menu { Name = "Learn", Callback = "learnWords" },
-            new Menu { Name = "Add new", Callback = "addWord" },
-            new Menu { Name = "Translate", Callback = "translateWord" },
+            new Menu { Name = "Add category", Callback = "newCategory" },
+            new Menu { Name = "Add word type", Callback = "newWordType" },
+            new Menu { Name = "Add language", Callback = "newLanguage" },
+            new Menu { Name = "Add word", Callback = "addWord" },
         };
 
         public string? GetMainMenu()

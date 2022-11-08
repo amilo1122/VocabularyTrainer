@@ -225,5 +225,46 @@ namespace VocabularyTrainer
             }
             return false;
         }
+
+        public bool AddCategory(string name)
+        {
+            bool isExists = repo.isCategoryExists(name);
+            if (!isExists)
+            {
+                repo.SaveCategoryToDB(name);
+                return true;
+            }
+            return false;
+        }
+
+        public bool AddWordType(string name)
+        {
+            bool isExists = repo.isWordTypeExists(name);
+            if (!isExists)
+            {
+                repo.SaveWordTypeToDB(name);
+                return true;
+            }
+            return false;
+        }
+
+        public bool AddLanguage(string name)
+        {
+            bool isExists = repo.isLanguageExists(name);
+            if (!isExists)
+            {
+                repo.SaveLanguageToDB(name);
+                return true;
+            }
+            return false;
+        }
+
+        public void CheckUser(long id)
+        {
+            if (!repo.isUserExists(id))
+            {
+                repo.SaveUserToDB(id);
+            }
+        }
     }
 }

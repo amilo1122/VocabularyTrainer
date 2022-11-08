@@ -103,15 +103,87 @@ namespace VocabularyTrainer
             }
         }
 
-        // Возвращаем слово по id
+        // Проверка существования слова в БД
         public bool isWordExists(string fromWord)
         {
             using (var connection = new NpgsqlConnection(connectionString))
             {
                 try
                 {
-                    var sql = @"SELECT * FROM words WHERE fromWord = " + fromWord;
+                    var sql = @"SELECT * FROM words WHERE fromWord = " + fromWord.ToLower();
                     connection.QueryFirstOrDefault<Word>(sql);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        // Проверка существования категории в БД
+        public bool isCategoryExists(string name)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = @"SELECT * FROM category WHERE name = " + name.ToLower();
+                    connection.QueryFirstOrDefault<Category>(sql);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        // Проверка существования типа слова в БД
+        public bool isWordTypeExists(string name)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = @"SELECT * FROM wordtypes WHERE name = " + name.ToLower();
+                    connection.QueryFirstOrDefault<WordType>(sql);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        // Проверка существования языка в БД
+        public bool isLanguageExists(string name)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = @"SELECT * FROM languages WHERE name = " + name.ToLower();
+                    connection.QueryFirstOrDefault<Language>(sql);
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        // Проверка существования пользователя в БД
+        public bool isUserExists(long id)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                try
+                {
+                    var sql = @"SELECT * FROM users WHERE id = " + id;
+                    connection.QueryFirstOrDefault<User>(sql);
                     return true;
                 }
                 catch
@@ -191,15 +263,59 @@ namespace VocabularyTrainer
             }
         }
 
-        //
+        // Сохраняем новое слово в БД
         public void SaveWordToDB(Word word)
         {
             using (var connection = new NpgsqlConnection(connectionString))
             {
                 var sql = @"INSERT INTO words(fromword, fromlangid, toword, tolangid, wordtypeid, categoryid) 
-                            VALUES('" + word.FromWord + "'," + word.FromLangId + ",'" + word.ToWord + "', " 
+                            VALUES('" + word.FromWord.ToLower() + "'," + word.FromLangId + ",'" + word.ToWord.ToLower() + "', " 
                             + word.ToLangId + "," + word.WordTypeId + "," + word.CategoryId + ");";
                 connection.Query<Word>(sql).ToList();
+            }
+        }
+
+        // Сохраняем новую категорию в БД
+        public void SaveCategoryToDB(string name)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"INSERT INTO category(name) 
+                            VALUES('" + name.ToLower() + "');";
+                connection.Query<Category>(sql).ToList();
+            }
+        }
+
+        // Сохраняем новый тип слова в БД
+        public void SaveWordTypeToDB(string name)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"INSERT INTO wordtypes(name) 
+                            VALUES('" + name.ToLower() + "');";
+                connection.Query<WordType>(sql).ToList();
+            }
+        }
+
+        // Сохраняем новый язык в БД
+        public void SaveLanguageToDB(string name)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"INSERT INTO languages(name) 
+                            VALUES('" + name.ToLower() + "');";
+                connection.Query<Language>(sql).ToList();
+            }
+        }
+
+        // Сохраняем нового пользователя в БД
+        public void SaveUserToDB(long id)
+        {
+            using (var connection = new NpgsqlConnection(connectionString))
+            {
+                var sql = @"INSERT INTO users(id) 
+                            VALUES(" + id + ");";
+                connection.Query<Language>(sql).ToList();
             }
         }
     }
