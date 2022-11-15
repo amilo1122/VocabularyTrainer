@@ -483,6 +483,10 @@ async Task CheckTranslation(ITelegramBotClient botClient, Message message)
 async Task SetFromWord(ITelegramBotClient botClient, Message message)
 {
     var id = message.Chat.Id;
+    if (_newWordDict.ContainsKey(id))
+    {
+        _newWordDict.Remove(id);
+    }
     var fromWord = message.Text;
     var word = _newWordDict[id];
     word.FromWord = fromWord;
