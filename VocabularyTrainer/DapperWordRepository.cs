@@ -110,7 +110,7 @@ namespace VocabularyTrainer
             {
                 try
                 {
-                    var sql = @"SELECT * FROM words WHERE fromWord = " + fromWord.ToLower();
+                    var sql = @"SELECT * FROM words WHERE fromWord = '" + fromWord.ToLower() + "'";
                     connection.QueryFirstOrDefault<Word>(sql);
                     return true;
                 }
@@ -128,7 +128,7 @@ namespace VocabularyTrainer
             {
                 try
                 {
-                    var sql = @"SELECT * FROM category WHERE name = " + name.ToLower();
+                    var sql = @"SELECT * FROM category WHERE name = '" + name.ToLower() + "'";
                     connection.QueryFirstOrDefault<Category>(sql);
                     return true;
                 }
@@ -146,7 +146,7 @@ namespace VocabularyTrainer
             {
                 try
                 {
-                    var sql = @"SELECT * FROM wordtypes WHERE name = " + name.ToLower();
+                    var sql = @"SELECT * FROM wordtypes WHERE name = '" + name.ToLower() + "'";
                     connection.QueryFirstOrDefault<WordType>(sql);
                     return true;
                 }
@@ -164,7 +164,7 @@ namespace VocabularyTrainer
             {
                 try
                 {
-                    var sql = @"SELECT * FROM languages WHERE name = " + name.ToLower();
+                    var sql = @"SELECT * FROM languages WHERE name = '" + name.ToLower() + "'";
                     connection.QueryFirstOrDefault<Language>(sql);
                     return true;
                 }
